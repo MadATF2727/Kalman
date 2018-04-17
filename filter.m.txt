@@ -1,0 +1,100 @@
+function [s_est] = NLKF1_ver2(data_mat, s_init, Cs,Cn, Q, B)
+ 
+%%% Simple Kalman Filter for a plane moving in two dimensions
+ 
+
+ 
+%parameters passed: %data_mat has each measurement vector in a column %Fs is the measurement frequency
+ 
+%s_init is the initial state (in this case probably zeroes)
+ 
+%C is the initial covariance matrix that sets off the recursive computation
+ 
+%of mean square errors. The larger the covariance, the less credence the
+ 
+%filter gives to the state and the more it factors in the measurement in
+ 
+%its error computations
+ 
+%B: distributes unmodeled disturbances among the states
+ 
+%Q: vector of mean values of unmodeled disturbances and noise
+ 
+%%% In this case the state variables are X and Y position, and X and Y
+ 
+%%% velocity. The measurement variables are r and theta
+ 
+%initialize State transition matrix
+ 
+STM = zeros(4,4);
+ 
+%Predicted position in one direction = old position + Velocity(del)
+ 
+%Predicted Velocity = Old Velocity
+ 
+Fs = 1;
+ 
+del = 1/Fs;
+ 
+STM = [1 0 del 0; 0 1 0 del; 0 0 1 0; 0 0 0 1];
+ 
+%Provide partial derivative of the measurement model about which to
+ 
+%linearize point to point to obtain measurement matrix for each iteration of the filter. The measured variables are r and theta, or range
+ 
+%initialize matrices to store various filter values
+ 
+MSE_est = Cs; %the MSE matrix
+ 
+%for the Kalman gain term (to weight the difference between the prediction
+ 
+%and the measurement)
+ 
+Kalman_gain = zeros(length(s_init),length(s_init));
+ 
+s_est = zeros(length(s_init),size(data_mat,2)-1);
+ 
+s_pred = zeros(length(s_init),size(data_mat,2)-1);
+ 
+s_est(:,1) = s_init;
+ 
+gain_vecs = zeros(2,size(data_mat,2)-1);
+ 
+%make identity matrix for computing the estimate MSE
+ 
+I = eye(length(s_init));
+ 
+% start the filter loop
+ 
+for i = 1:size(data_mat,2)-1 %%%% Note I changed this to start at 2
+ 
+% make prediction s_pred(:,i+1) = STM*s_est(:,i);%state predicted by STM
+ 
+Pred_MSE = STM*MSE_est*STM'+B*Q*B'; %Mean square error associated with the prediction
+ 
+% made by the STM, which is not yet refined by how distant it is from
+ 
+% the measurement %x and y are called out to pass to the routine (lin_H_V3) that
+ 
+ 
+ %linearizes the observation model about approriate point on each
+ 
+%iteration of the filter.
+ 
+x = s_pred(1,i+1); y = s_pred(2,i+1);
+ 
+H = lin_H_V2(x,y);
+ 
+GT = Cn+H*Pred_MSE*H'; Kalman_gain =(Pred_MSE*H')*inv(GT);
+ 
+gain_vecs(:,i) = diag(Kalman_gain);
+ 
+err = H*data_mat(:,i+1)-H*s_pred(:,i);
+ 
+s_est(:,i+1) = s_pred(:,i) + Kalman_gain*(err);
+ 
+MSE_est = (I - Kalman_gain*H)*Pred_MSE;
+ 
+end
+ 
+end

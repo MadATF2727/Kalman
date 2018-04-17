@@ -1,0 +1,86 @@
+% Test Code for the revision of a simple EKF %% Generate Data (Both States and Obsevations
+ 
+Cn = [.0625 0;0 .0027]; %Measurement Covariance Matrix: Using a variance of .0625 for range (std of .25m) and a variance of .0027 for the bearing (std of 1 degree)
+ 
+Q = eye(4); % Physical Model Covariance Matrix:1 m^2 variance on the x and y positions,1 m^4/s^2 on velocity (although the position error is cancelled by B to avoid redundant error)
+ 
+init_state = [1 1 100 100]';% state variables are x,y,x',y'
+ 
+N = 1000; %1000 time instants
+ 
+B = [zeros(2,4);zeros(2,2) eye(2)]; % Matrix to distribute model error among the states
+ 
+[states_true,obs_true]= state_gen_V3(Q,Cn,init_state,N,B); % the states and observations are returned as columns
+ 
+% make a plot of the true path of the plane
+ 
+figure()
+ 
+plot(states_true(1,:),states_true(2,:));
+ 
+title('True Trajectory');
+ 
+xlabel('x position in m');
+ 
+020040060080010001200-1000010002000Time in Sec
+   X   E  r  r  o  r   i  n  m
+X Error Over Time020040060080010001200-1000010002000Time in Sec
+   Y   E  r  r  o  r   i  n  m
+Y Error Over Time
+
+ 
+ylabel('y position in m');
+ 
+%% Run Filter
+ 
+Cs = eye(4).*3;
+ 
+[s_est] = NLKF1_ver2(states_true, init_state, Cs,Cn, Q, B);
+ 
+%% Plot the Filter Output and State figure()
+ 
+hold on
+ 
+plot(states_true(1,:),states_true(2,:));
+ 
+plot(s_est(1,1:end-1),s_est(2,1:end-1),'g');
+ 
+hold off %% Plot the Filter Output and State dx = abs(states_true(1,:))-abs(s_est(1,:)); %x distance from tangent to true path
+ 
+dy =abs(states_true(2,:))-abs(s_est(2,:)); %y distance from tangent to true path
+ 
+figure() hold on
+ 
+plot(states_true(1,:),states_true(2,:));
+ 
+plot(s_est(1,1:end-1),s_est(2,1:end-1),'g');
+ 
+xlabel('x in m')
+ 
+xlabel('y in m')
+ 
+title('Filter Output Over Time')
+ 
+legend('Modeled State','Predicted State')
+ 
+hold off
+ 
+figure() subplot(2,1,1);
+ 
+plot((1:N+1),dx,'k');
+ 
+xlabel('Time in Sec')
+ 
+ylabel('X Error in m')
+ 
+title('X Error Over Time')
+ 
+subplot(2,1,2)
+ 
+plot((1:N+1),dy,'r');
+ 
+xlabel('Time in Sec')
+ 
+ylabel('Y Error in m')
+ 
+title('Y Error Over Time')
